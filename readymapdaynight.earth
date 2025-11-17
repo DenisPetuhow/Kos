@@ -1,0 +1,37 @@
+<map name="readymap.org" type="geocentric">
+    
+	<options>
+	<profile>spherical-mercator</profile> 
+	<lighting>false</lighting>
+                <terrain driver = 			"mp"
+				skirt_ratio = 				"0.05"
+				color =						"ffffffff"
+				normalize_edges = 			"true"
+				incremental_update = 		"true"
+				quick_release_gl_object = 	"false"
+                max_level				= 	"3"
+				min_level				= 	"0"
+				cluster_culling       = 	"true"
+                mercator_fast_path    = 	"false"
+                blending              = 	"false" 
+				min_tile_range_factor =		"6.0" />
+    </options>
+    
+	
+    <image name="osm" driver="tms">
+        <url>/osm/tms.xml</url>
+		<format>png</format>
+    </image>
+	
+	
+	<image name="EarthAtNight" driver="tms">
+        <url>/EarthAtNight/tms.xml</url>
+		<format>png</format>
+		        <color_filters>
+        	<night/>
+        </color_filters>
+    </image>	 
+
+
+    
+</map>
