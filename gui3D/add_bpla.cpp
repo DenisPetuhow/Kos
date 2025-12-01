@@ -28,7 +28,7 @@ add_BPLA::add_BPLA(ASD_bpla_struct _BPLA, QString icon,ASDScene3D * scene)
     double fs=lon_fin_bpla*DEG_TO_RAD;
     length_bpla=acos(cos(tp)*cos(ts)+sin(tp)*sin(ts)*cos(fs-fp))*R_EARTH;
     //qDebug()<<" Дальность до цели = "<<length_bpla<<"км"<<icon;
-    m_create_object=true;
+    m_create_object=false;
 
 }
 
@@ -124,70 +124,83 @@ QVector<double> add_BPLA::getPos_BpLA(QDateTime dt)
 
 void add_BPLA::repaint(QDateTime time, ASDScene3D *scene)
 {
-    scene->m_root_gsk->removeChild(m_transform);
     cur_pos_bpla = getPos_BpLA(time);
-//    if(m_create_object==false){
 
-//    }
-    //qDebug()<<cur_pos_bpla;
-
-    if(m_icon.isEmpty()==true)
+    // Если объект уже достиг цели, удаляем его
+    if(m_create_object == false && m_transform.valid())
     {
-        QVector<double> coord = ASDCoordConvertor::convGeoToGsc(cur_pos_bpla[1]*DEG_TO_RAD, cur_pos_bpla[0]*DEG_TO_RAD, 10);
-        osg::ref_ptr<osg::Geode> geode (new osg::Geode());
-        osg::ref_ptr<osg::Geometry> geometry (new osg::Geometry());
-        osg::ref_ptr<osg::Vec3Array> vertices (new osg::Vec3Array());
-        vertices->push_back(osg::Vec3(coord[0]*1000,coord[1]*1000,coord[2]*1000));
-        geometry->setVertexArray(vertices.get());
-        osg::ref_ptr<osg::Vec4Array> color = new osg::Vec4Array;
-        color->push_back(osg::Vec4(1.0,0,0,1));
-        geometry->setColorArray(color);
-        geometry->setColorBinding(osg::Geometry::BIND_PER_PRIMITIVE_SET);
-        geometry->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POINTS,0,vertices->size()));
-        osg::Point *point = new osg::Point;
-        point->setSize(100);
-        geode->getOrCreateStateSet()->setAttribute(point);
-        geode->addDrawable(geometry.get());
-        osg::StateSet* state = geode->getOrCreateStateSet();
-        state->setMode( GL_LIGHTING, osg::StateAttribute::OFF);
-        m_transform = new osg::MatrixTransform;
-        m_transform->addChild(geode);
-        scene->m_root_gsk->addChild(m_transform);
-
-
+        scene->m_root_gsk->removeChild(m_transform);
+        return;
     }
-    else
-    {
-        osg::ref_ptr<osg::MatrixTransform> icon  = scene->addObjectIconPoint(m_icon);
-        osg::AutoTransform* at = new osg::AutoTransform;
-        at->addChild(icon);
-        at->setAutoScaleToScreen(true);
-        at->setMinimumScale(0);
-        at->setMaximumScale(500);
-        m_transform = new osg::MatrixTransform;
-        m_transform->addChild(at);
-        QVector<double> coord = ASDCoordConvertor::convGeoToGsc(cur_pos_bpla[1]*DEG_TO_RAD, cur_pos_bpla[0]*DEG_TO_RAD, 10);
 
-        osg::Matrix mt1,mt2,mt3,mt4,mt_sum;
-        mt4 = osg::Matrix::translate(osg::Vec3d(coord[0]*1000,coord[1]*1000,coord[2]*1000));
-        mt1 = osg::Matrix::rotate(osg::Quat(cur_pos_bpla[0]*DEG_TO_RAD, osg::Z_AXIS));
-        mt2 = osg::Matrix::rotate(osg::Quat(M_PI_2-cur_pos_bpla[1]*DEG_TO_RAD, osg::Y_AXIS));
-        mt3 = osg::Matrix::rotate(osg::Quat(M_PI, osg::Z_AXIS));
-        mt_sum = mt3*mt2*mt1*mt4;
+    // Вычисляем координаты
+    QVector<double> coord = ASDCoordConvertor::convGeoToGsc(cur_pos_bpla[1]*DEG_TO_RAD, cur_pos_bpla[0]*DEG_TO_RAD, 10);
+
+    // Создаем матрицу трансформации
+    osg::Matrix mt1,mt2,mt3,mt4,mt_sum;
+    mt4 = osg::Matrix::translate(osg::Vec3d(coord[0]*1000,coord[1]*1000,coord[2]*1000));
+    mt1 = osg::Matrix::rotate(osg::Quat(cur_pos_bpla[0]*DEG_TO_RAD, osg::Z_AXIS));
+    mt2 = osg::Matrix::rotate(osg::Quat(M_PI_2-cur_pos_bpla[1]*DEG_TO_RAD, osg::Y_AXIS));
+    mt3 = osg::Matrix::rotate(osg::Quat(M_PI, osg::Z_AXIS));
+    mt_sum = mt3*mt2*mt1*mt4;
+
+    // Создаем объект только один раз при первом вызове
+    if(m_transform.valid() == false)
+    {
+        if(m_icon.isEmpty()==true)
+        {
+            // Создаем простую точку
+            osg::ref_ptr<osg::Geode> geode (new osg::Geode());
+            osg::ref_ptr<osg::Geometry> geometry (new osg::Geometry());
+            osg::ref_ptr<osg::Vec3Array> vertices (new osg::Vec3Array());
+            vertices->push_back(osg::Vec3(0, 0, 0)); // В локальных координатах
+            geometry->setVertexArray(vertices.get());
+            osg::ref_ptr<osg::Vec4Array> color = new osg::Vec4Array;
+            color->push_back(osg::Vec4(1.0,0,0,1));
+            geometry->setColorArray(color);
+            geometry->setColorBinding(osg::Geometry::BIND_PER_PRIMITIVE_SET);
+            geometry->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POINTS,0,vertices->size()));
+            osg::Point *point = new osg::Point;
+            point->setSize(100);
+            geode->getOrCreateStateSet()->setAttribute(point);
+            geode->addDrawable(geometry.get());
+            osg::StateSet* state = geode->getOrCreateStateSet();
+            state->setMode( GL_LIGHTING, osg::StateAttribute::OFF);
+
+            m_transform = new osg::MatrixTransform;
+            m_transform->addChild(geode);
+        }
+        else
+        {
+            // Создаем иконку
+            osg::ref_ptr<osg::MatrixTransform> icon  = scene->addObjectIconPoint(m_icon);
+            osg::AutoTransform* at = new osg::AutoTransform;
+            at->addChild(icon);
+            at->setAutoScaleToScreen(true);
+            at->setMinimumScale(0);
+            at->setMaximumScale(500);
+
+            m_transform = new osg::MatrixTransform;
+            m_transform->addChild(at);
+        }
+
+        // Устанавливаем начальную матрицу и добавляем в сцену
         m_transform->setMatrix(mt_sum);
         scene->m_root_gsk->addChild(m_transform);
     }
-
-
-
+    else
+    {
+        // Объект уже создан, просто обновляем его позицию
+        m_transform->setMatrix(mt_sum);
+    }
 }
 
 bool add_BPLA::remove(ASDScene3D *scene)
 {
-    if(!scene->view->done())
+    if(!scene->view->done() && m_transform.valid())
     {
         scene->m_root_gsk->removeChild(m_transform);
-
+        m_transform = nullptr;
         return true;
     }
     return false;
