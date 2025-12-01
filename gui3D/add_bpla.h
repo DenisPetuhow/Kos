@@ -6,6 +6,8 @@
 #include "ASD/asdconvtype.h"
 #include "ASD/orbitalvehicle.h"
 #include "osg/BlendColor"
+#include "osg/LineWidth"
+#include "osg/LineStipple"
 
 
 
@@ -41,8 +43,11 @@ public:
 
 protected:
     osg::ref_ptr<osg::MatrixTransform> m_transform;
+    osg::ref_ptr<osg::Geode> m_trajectory_line;  // 3D линия траектории
 
-
+    // Создание 3D линии траектории полета
+    void createTrajectoryLine(ASDScene3D* scene);
 };
+
 
 #endif // ADD_BPLA_H
