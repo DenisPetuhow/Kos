@@ -1,6 +1,5 @@
 #include "add_bpla.h"
 
-// Singleton для 3D модели (загружается 1 раз)
 osg::ref_ptr<osg::MatrixTransform> add_BPLA::m_bpla = 0;
 
 add_BPLA::add_BPLA(ASD_bpla_struct _BPLA, QString icon, ASDScene3D * scene)
@@ -27,7 +26,7 @@ add_BPLA::add_BPLA(ASD_bpla_struct _BPLA, QString icon, ASDScene3D * scene)
     double fs = lon_fin_bpla*DEG_TO_RAD;
     length_bpla = acos(cos(tp)*cos(ts) + sin(tp)*sin(ts)*cos(fs-fp)) * R_EARTH;
 
-    m_create_object = true;  // ✅ ИСПРАВЛЕНО: true - объект должен существовать
+    m_create_object = true;
 }
 
 double add_BPLA::get_azimuth(const double lat1, const double lon1,
@@ -111,228 +110,139 @@ QVector<double> add_BPLA::getPos_BpLA(QDateTime dt)
     } else {
         cur_pos[0] = lon_fin_bpla;
         cur_pos[1] = lat_fin_bpla;
-        m_create_object = false;  // ✅ БПЛА достиг цели
+        m_create_object = false;
     }
 
     return cur_pos;
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// ГЛАВНЫЙ МЕТОД ОТРИСОВКИ (ИСПРАВЛЕННЫЙ)
-// ═══════════════════════════════════════════════════════════════════
 void add_BPLA::repaint(QDateTime time, ASDScene3D *scene)
 {
-    qDebug() << "=== BPLA repaint START ===" << m_BPLA.id_bpla;
+    qDebug() << "########## BPLA REPAINT START ##########" << m_BPLA.id_bpla;
 
-    if(!scene) {
-        qDebug() << "ERROR: scene is NULL!";
-        return;
-    }
-
-    if(!scene->m_root_gsk.valid()) {
-        qDebug() << "ERROR: m_root_gsk is invalid!";
-        return;
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // 1. РАСЧЁТ ТЕКУЩЕЙ ПОЗИЦИИ
-    // ═══════════════════════════════════════════════════════════════
+    // Получаем текущую позицию
     cur_pos_bpla = getPos_BpLA(time);
-    qDebug() << "Position (lon, lat):" << cur_pos_bpla[0] << cur_pos_bpla[1];
-    qDebug() << "m_create_object:" << m_create_object;
-    qDebug() << "m_transform.valid():" << m_transform.valid();
+    qDebug() << "Position:" << cur_pos_bpla;
 
-    // ✅ ИСПРАВЛЕНО: правильная логика удаления
-    // Если БПЛА достиг цели (m_create_object == false) И объект существует, удаляем его
+    // Если достигли цели, удаляем объект
     if(m_create_object == false && m_transform.valid())
     {
-        qDebug() << "Removing BPLA - reached destination";
+        qDebug() << "УДАЛЯЕМ БПЛА - достигнута цель";
         scene->m_root_gsk->removeChild(m_transform);
         m_transform = nullptr;
         return;
     }
 
-    // Если БПЛА достиг цели, но объект уже удален, просто выходим
     if(m_create_object == false)
     {
-        qDebug() << "BPLA reached destination, object already removed";
+        qDebug() << "БПЛА уже достиг цели";
         return;
     }
 
-    // Преобразование Geo → GSC
+    // Преобразование координат Geo -> GSC (в километрах)
     QVector<double> coord = ASDCoordConvertor::convGeoToGsc(
-        cur_pos_bpla[1] * DEG_TO_RAD,  // lat
-        cur_pos_bpla[0] * DEG_TO_RAD,  // lon
+        cur_pos_bpla[1] * DEG_TO_RAD,  // lat (широта)
+        cur_pos_bpla[0] * DEG_TO_RAD,  // lon (долгота)
         10                              // высота 10 км
     );
-    qDebug() << "GSC coords (x,y,z):" << coord[0] << coord[1] << coord[2];
 
-    // ═══════════════════════════════════════════════════════════════
-    // 2. ОДНОКРАТНАЯ ЗАГРУЗКА 3D МОДЕЛИ (Singleton)
-    // ═══════════════════════════════════════════════════════════════
-    if(m_bpla == 0) {
-        qDebug() << "Loading 3D model (singleton)...";
-        m_bpla = new osg::MatrixTransform();
+    qDebug() << "GSC coordinates (km):" << coord[0] << coord[1] << coord[2];
 
-        // A. Попробуем загрузить 3D модель
-        osg::ref_ptr<osg::MatrixTransform> model3d_object =
-            scene->addObject(QString("gui3D/model.3ds"));
+    // Создаем матрицу трансформации
+    osg::Matrix mt1, mt2, mt3, mt4, mt_sum;
 
-        if(model3d_object.valid()) {
-            qDebug() << "3D model loaded successfully";
-            // Масштабирование модели
-            osg::Matrix scale_matrix = osg::Matrix::scale(osg::Vec3d(500, 500, 500));
-            model3d_object->setMatrix(scale_matrix);
+    // Перемещение в позицию (преобразуем км в метры)
+    mt4 = osg::Matrix::translate(osg::Vec3d(coord[0]*1000, coord[1]*1000, coord[2]*1000));
 
-            // Загрузка иконки для дальних расстояний
-            osg::ref_ptr<osg::MatrixTransform> model3d_icon =
-                scene->addObjectIconPoint(QString("images/bpl.png"));
+    // Вращения для правильной ориентации
+    mt1 = osg::Matrix::rotate(osg::Quat(cur_pos_bpla[0]*DEG_TO_RAD, osg::Z_AXIS));
+    mt2 = osg::Matrix::rotate(osg::Quat(M_PI_2 - cur_pos_bpla[1]*DEG_TO_RAD, osg::Y_AXIS));
+    mt3 = osg::Matrix::rotate(osg::Quat(az_bpla, osg::Z_AXIS));
 
-            // LOD (Level of Detail) - переключение по расстоянию
-            osg::ref_ptr<osg::LOD> lod = new osg::LOD;
-            lod->addChild(model3d_object, 0,      50000);   // 0-50 км: 3D модель
-            lod->addChild(model3d_icon,   50000,  1e20);    // >50 км: иконка
+    mt_sum = mt3 * mt2 * mt1 * mt4;
 
-            m_bpla->addChild(lod);
-        } else {
-            qDebug() << "3D model not found, using icon only";
-            // Если модель не найдена, используем только иконку
-            osg::ref_ptr<osg::MatrixTransform> model3d_icon =
-                scene->addObjectIconPoint(QString("images/bpl.png"));
+    // СОЗДАНИЕ ОБЪЕКТА (только первый раз)
+    if(!m_transform.valid())
+    {
+        qDebug() << "СОЗДАЕМ ОБЪЕКТ БПЛА ВПЕРВЫЕ";
 
-            if(model3d_icon.valid()) {
-                m_bpla->addChild(model3d_icon);
-            } else {
-                qDebug() << "ERROR: Icon not found either!";
+        m_transform = new osg::MatrixTransform();
+
+        // Используем иконку если задана
+        if(!m_icon.isEmpty())
+        {
+            qDebug() << "Загружаем иконку:" << m_icon;
+            osg::ref_ptr<osg::MatrixTransform> icon = scene->addObjectIconPoint(m_icon);
+
+            if(icon.valid())
+            {
+                osg::AutoTransform* at = new osg::AutoTransform;
+                at->addChild(icon);
+                at->setAutoScaleToScreen(true);
+                at->setMinimumScale(0);
+                at->setMaximumScale(1000);  // Увеличено для лучшей видимости
+                m_transform->addChild(at);
+                qDebug() << "Иконка загружена успешно";
+            }
+            else
+            {
+                qDebug() << "ОШИБКА: иконка не загрузилась!";
             }
         }
-    }
+        else
+        {
+            qDebug() << "Иконка не задана, создаем точку";
+        }
 
-    // ═══════════════════════════════════════════════════════════════
-    // 3. СОЗДАНИЕ ЭКЗЕМПЛЯРА БПЛА (ТОЛЬКО ПЕРВЫЙ РАЗ!)
-    // ═══════════════════════════════════════════════════════════════
-    if(!m_transform.valid()) {
-        qDebug() << "Creating BPLA object for first time";
+        // ВСЕГДА добавляем большую яркую точку для отладки
+        qDebug() << "Создаем видимую точку";
+        osg::ref_ptr<osg::Geode> geode = new osg::Geode();
+        osg::ref_ptr<osg::Geometry> geometry = new osg::Geometry();
+        osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
 
-        // A. Создание главной трансформации
-        m_transform = new osg::MatrixTransform();
-        m_transform->addChild(m_bpla.get());
+        // Точка в локальных координатах (0,0,0) - позиционируется матрицей
+        vertices->push_back(osg::Vec3(0, 0, 0));
+        geometry->setVertexArray(vertices.get());
 
-        // B. Создание текстовой метки
-        osg::Vec3 pos(0, 0, 0);
-        osg::Vec4 color(1.0f, 1.0f, 0.0f, 1.0f);  // Жёлтый
-        float size = 15;
+        // ЯРКО-КРАСНЫЙ цвет
+        osg::ref_ptr<osg::Vec4Array> color = new osg::Vec4Array;
+        color->push_back(osg::Vec4(1.0, 0.0, 0.0, 1.0));  // Красный
+        geometry->setColorArray(color);
+        geometry->setColorBinding(osg::Geometry::BIND_PER_PRIMITIVE_SET);
+        geometry->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, vertices->size()));
 
-        osgText::Text* text = new osgText::Text;
-        text->setColor(color);
-        text->setFont("font/times.ttf");
-        text->setCharacterSize(size);
-        text->setPosition(pos);
-        text->setAxisAlignment(osgText::Text::SCREEN);
+        // ОГРОМНЫЙ размер точки для видимости
+        osg::Point *point = new osg::Point;
+        point->setSize(200.0);  // Очень большая точка
+        geode->getOrCreateStateSet()->setAttribute(point);
+        geode->addDrawable(geometry.get());
 
-        // ✅ ИСПРАВЛЕНО: osgText::Text вместо osgText::String
-        text->setCharacterSizeMode(osgText::Text::SCREEN_COORDS);
+        // Отключаем освещение
+        osg::StateSet* state = geode->getOrCreateStateSet();
+        state->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
 
-        text->setDrawMode(osgText::Text::TEXT);
-        text->setText(
-            QString("БПЛА #%1").arg(m_BPLA.id_bpla).toStdString(),
-            osgText::String::ENCODING_UTF8
-        );
+        m_transform->addChild(geode);
 
-        osg::ref_ptr<osg::Geode> geod = new osg::Geode();
-        geod->addDrawable(text);
-
-        // LOD для текста (видимость 500 м - 10 км)
-        osg::ref_ptr<osg::LOD> lod_text = new osg::LOD;
-        lod_text->addChild(geod, 500, 10000);
-
-        osg::ref_ptr<osg::MatrixTransform> m_transform_text =
-            new osg::MatrixTransform();
-        m_transform_text->addChild(lod_text);
-
-        // Смещение текста относительно модели
-        osg::Matrix text_offset = osg::Matrix::translate(
-            osg::Vec3d(0, 200, 0)  // 200 м вверх
-        );
-        m_transform_text->setMatrix(text_offset);
-
-        m_transform->addChild(m_transform_text.get());
-
-        // C. Вычисляем начальную матрицу трансформации
-        osg::Matrix mt_translate, mt_rotate_lon, mt_rotate_lat,
-                    mt_rotate_heading, mt_sum;
-
-        mt_translate = osg::Matrix::translate(
-            osg::Vec3d(coord[0]*1000, coord[1]*1000, coord[2]*1000)
-        );
-
-        mt_rotate_lon = osg::Matrix::rotate(
-            osg::Quat(cur_pos_bpla[0] * DEG_TO_RAD, osg::Z_AXIS)
-        );
-
-        mt_rotate_lat = osg::Matrix::rotate(
-            osg::Quat(M_PI_2 - cur_pos_bpla[1] * DEG_TO_RAD, osg::Y_AXIS)
-        );
-
-        mt_rotate_heading = osg::Matrix::rotate(
-            osg::Quat(az_bpla, osg::Z_AXIS)
-        );
-
-        mt_sum = mt_rotate_heading * mt_rotate_lat * mt_rotate_lon * mt_translate;
-
-        // D. Устанавливаем начальную матрицу и добавляем в сцену
+        // Устанавливаем матрицу и добавляем в сцену
         m_transform->setMatrix(mt_sum);
         scene->m_root_gsk->addChild(m_transform);
 
-        qDebug() << "BPLA object created and added to scene";
+        qDebug() << "БПЛА создан:" << m_BPLA.id_bpla;
     }
-    // ═══════════════════════════════════════════════════════════════
-    // 4. ОБНОВЛЕНИЕ ПОЗИЦИИ И ОРИЕНТАЦИИ (КАЖДЫЙ КАДР)
-    // ═══════════════════════════════════════════════════════════════
-    else {
-        qDebug() << "Updating BPLA position";
-
-        // ✅ ТОЛЬКО ОБНОВЛЯЕМ МАТРИЦУ, НЕ ПЕРЕСОЗДАЁМ ОБЪЕКТ!
-
-        // Матрицы трансформации
-        osg::Matrix mt_translate, mt_rotate_lon, mt_rotate_lat,
-                    mt_rotate_heading, mt_sum;
-
-        // 1. Перемещение в текущую позицию (в метрах)
-        mt_translate = osg::Matrix::translate(
-            osg::Vec3d(coord[0]*1000, coord[1]*1000, coord[2]*1000)
-        );
-
-        // 2. Вращение по долготе
-        mt_rotate_lon = osg::Matrix::rotate(
-            osg::Quat(cur_pos_bpla[0] * DEG_TO_RAD, osg::Z_AXIS)
-        );
-
-        // 3. Вращение по широте
-        mt_rotate_lat = osg::Matrix::rotate(
-            osg::Quat(M_PI_2 - cur_pos_bpla[1] * DEG_TO_RAD, osg::Y_AXIS)
-        );
-
-        // 4. Вращение по азимуту (направление полёта)
-        mt_rotate_heading = osg::Matrix::rotate(
-            osg::Quat(az_bpla, osg::Z_AXIS)
-        );
-
-        // 5. Итоговая матрица
-        mt_sum = mt_rotate_heading * mt_rotate_lat * mt_rotate_lon * mt_translate;
-
-        // ✅ ПРОСТО ОБНОВЛЯЕМ МАТРИЦУ!
+    // ОБНОВЛЕНИЕ ПОЗИЦИИ (каждый кадр после создания)
+    else
+    {
+        qDebug() << "Обновляем позицию БПЛА";
         m_transform->setMatrix(mt_sum);
     }
 
-    qDebug() << "=== BPLA repaint END ===";
+    qDebug() << "########## BPLA REPAINT END ##########";
 }
 
 bool add_BPLA::remove(ASDScene3D *scene)
 {
     if(!scene->view->done())
     {
-        // ✅ ДОБАВЛЕНА ПРОВЕРКА
         if(m_transform.valid()) {
             scene->m_root_gsk->removeChild(m_transform);
             m_transform = nullptr;
