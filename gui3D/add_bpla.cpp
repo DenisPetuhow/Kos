@@ -169,9 +169,11 @@ void add_BPLA::createLabel()
     text->setDrawMode(osgText::Text::TEXT);
     text->setBackdropType(osgText::Text::DROP_SHADOW_BOTTOM_RIGHT);  // Тень для лучшей видимости
 
-    // Пытаемся загрузить шрифт
-    if(!text->setFont("font/times.ttf"))
-    {
+    // Загружаем шрифт
+    osgText::Font* font = osgText::readFontFile("font/times.ttf");
+    if(font) {
+        text->setFont(font);
+    } else {
         qDebug() << "Шрифт font/times.ttf не найден, используется стандартный";
     }
 
