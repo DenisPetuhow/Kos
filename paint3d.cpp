@@ -88,20 +88,47 @@ void CPaint3D::calc()
             ASDOrbitalVehicle ka(m_ka[i]);
 
             ASDOrbitalObjectPar par(m_ka[i]);
+
+            // Устанавливаем уникальный ID для каждого КА
+            par.idVeh = i + 1;
+            m_ka[i].idVeh = par.idVeh;
+
             ASDBsePar bse;
             bse.type=COMMUNICATION;
-            bse.gamma=asin(R_EARTH/(R_EARTH + 500.))*RAD_TO_DEG; //g
+
+            // Рассчитываем gamma из высоты орбиты КА
+            double altitude_km = 500.0; // По умолчанию
+            if(m_ka[i].type_dat == 1) {
+                // TLE данные - извлекаем высоту из большой полуоси
+                QVector<double> kep = ka.getKep(m_time_begin);
+                altitude_km = kep[0] - R_EARTH; // a - R_EARTH
+            } else {
+                // Кеплеровы элементы
+                altitude_km = m_ka[i].kep.a - R_EARTH;
+            }
+            bse.gamma = asin(R_EARTH / (R_EARTH + altitude_km)) * RAD_TO_DEG;
 
             ASDObject3D* orb = new addOrbit(ka);
             m_page->addObject3D(orb);
 
+            // Если есть данные из GUI/XML, используем их (они перезапишут gamma)
             for(int i  =0; i<par.bsa.size(); i++)
             {
                 bse = par.bsa[i];
             }
+
+            // Сохраняем gamma обратно в структуру
+            if(par.bsa.size() == 0) {
+                par.bsa.push_back(bse);
+            } else {
+                par.bsa[0].gamma = bse.gamma;
+            }
+            m_ka[i].bsa = par.bsa;
+
             par.nameVeh=m_ka[i].stle.satName;
             if(m_ka[i].type_dat==0)
                 par.nameVeh=m_ka[i].kep.name;
+            m_ka[i].nameVeh = par.nameVeh;
 
             osg::ref_ptr<ASDObject3D> KA = new ASDOrbitVeh3D(ka,par);
             m_page->addObject3D(KA);
@@ -120,14 +147,17 @@ void CPaint3D::calc()
 
 void CPaint3D::calc_bpla()
 {
-    QString icon = QString("images/bpl.png");
-
     if(m_BpLA.size()>0)
     {
         for(int i = 0; i < m_BpLA.size(); i++)
         {
-            osg::ref_ptr<ASDObject3D> bpla_obj3D = new add_BPLA(m_BpLA[i], icon, m_page);
+            osg::ref_ptr<ASDObject3D> bpla_obj3D = new add_BPLA(m_BpLA[i], m_page);
 
+            // Передаем список КА для проверки видимости
+            add_BPLA* bpla_ptr = dynamic_cast<add_BPLA*>(bpla_obj3D.get());
+            if(bpla_ptr) {
+                bpla_ptr->setKaList(m_ka);
+            }
 
             m_page->addObject3D(bpla_obj3D);
         }

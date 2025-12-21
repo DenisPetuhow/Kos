@@ -328,6 +328,9 @@ void add_BPLA::repaint(QDateTime time, ASDScene3D *scene)
     {
         m_transform->setMatrix(mt_sum);
     }
+
+    // Обновляем линии видимости к КА
+    updateVisibilityLines(time, scene);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -347,8 +350,209 @@ bool add_BPLA::remove(ASDScene3D *scene)
             m_trajectory_line = nullptr;
         }
 
+        // Удаляем все линии видимости
+        for(auto it = m_visibility_lines.begin(); it != m_visibility_lines.end(); ++it) {
+            if(it.value().valid()) {
+                scene->m_root_agsk->removeChild(it.value());
+            }
+        }
+        m_visibility_lines.clear();
+
         m_create_object = false;
         return true;
     }
     return false;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// УСТАНОВКА СПИСКА КА ДЛЯ ПРОВЕРКИ ВИДИМОСТИ
+// ═══════════════════════════════════════════════════════════════════════════
+void add_BPLA::setKaList(QVector<ASDOrbitalObjectPar> ka_list)
+{
+    m_ka_list = ka_list;
+    qDebug() << "БПЛА #" << m_BPLA.id_bpla << "получил список из" << ka_list.size() << "КА";
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ПРОВЕРКА ВИДИМОСТИ КА С ПОЗИЦИИ БПЛА
+// Алгоритм скопирован из calc_bpla_plan.cpp::iszone()
+// ═══════════════════════════════════════════════════════════════════════════
+bool add_BPLA::isKaVisible(QDateTime time,
+                           QVector<double> coordKA_AGESC_km,
+                           QVector<double> coordBPLA_geo_deg,
+                           double ka_gamma_deg)
+{
+    ASDCoordConvertor conv;
+    double elmin = ka_gamma_deg * DEG_TO_RAD;
+
+    // Преобразование: AGESC → GSC → TSC (топоцентрическая от БПЛА)
+    QVector<double> coord_gsc = conv.convAgescToGsc(coordKA_AGESC_km, time);
+    QVector<double> coord_scc = conv.convGscToSsc(
+        coord_gsc,
+        coordBPLA_geo_deg[1] * DEG_TO_RAD,  // lat в радианах
+        coordBPLA_geo_deg[0] * DEG_TO_RAD,  // lon в радианах
+        0.0                                  // высота БПЛА (10м → 0км)
+    );
+
+    if (coord_scc[1] > -100) {
+        double r = sqrt(coord_scc[0]*coord_scc[0] + coord_scc[1]*coord_scc[1] + coord_scc[2]*coord_scc[2]);
+        double Elev = conv.angle(coord_scc[1] / r,
+                                 sqrt(coord_scc[0]*coord_scc[0] + coord_scc[2]*coord_scc[2]) / r);
+        if(Elev > M_PI)
+            Elev = 2*M_PI - Elev;
+
+        return (elmin < Elev);
+    }
+    return false;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// СОЗДАНИЕ ЛИНИИ ВИДИМОСТИ ОТ БПЛА ДО КА
+// ═══════════════════════════════════════════════════════════════════════════
+osg::ref_ptr<osg::Geode> add_BPLA::createVisibilityLine(QVector<double> bpla_agesc_m,
+                                                         QVector<double> ka_agesc_m,
+                                                         int ka_id)
+{
+    osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
+    vertices->push_back(osg::Vec3(bpla_agesc_m[0], bpla_agesc_m[1], bpla_agesc_m[2]));
+    vertices->push_back(osg::Vec3(ka_agesc_m[0], ka_agesc_m[1], ka_agesc_m[2]));
+
+    osg::ref_ptr<osg::Geometry> geometry = new osg::Geometry();
+    geometry->setVertexArray(vertices.get());
+
+    // Желтая линия
+    osg::ref_ptr<osg::Vec4Array> colors = new osg::Vec4Array();
+    colors->push_back(osg::Vec4(1.0f, 1.0f, 0.0f, 0.9f)); // Желтый
+    geometry->setColorArray(colors.get());
+    geometry->setColorBinding(osg::Geometry::BIND_OVERALL);
+
+    geometry->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::LINES, 0, 2));
+
+    osg::StateSet* state_set = geometry->getOrCreateStateSet();
+
+    osg::LineWidth* line_width = new osg::LineWidth();
+    line_width->setWidth(2.0f);
+    state_set->setAttributeAndModes(line_width, osg::StateAttribute::ON);
+
+    state_set->setMode(GL_BLEND, osg::StateAttribute::ON);
+    state_set->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
+    state_set->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+
+    osg::ref_ptr<osg::Geode> geode = new osg::Geode();
+    geode->addDrawable(geometry.get());
+
+    return geode;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ОБНОВЛЕНИЕ ЛИНИЙ ВИДИМОСТИ (вызывается каждый кадр)
+// ═══════════════════════════════════════════════════════════════════════════
+void add_BPLA::updateVisibilityLines(QDateTime time, ASDScene3D* scene)
+{
+    if(m_ka_list.size() == 0) return;
+
+    QSet<int> currently_visible;
+    QSet<int> newly_visible;
+    QSet<int> lost_visibility;
+
+    // Текущая позиция БПЛА (lon, lat)
+    QVector<double> cur_pos_bpla_geo(2);
+    cur_pos_bpla_geo[0] = cur_pos_bpla[0]; // lon
+    cur_pos_bpla_geo[1] = cur_pos_bpla[1]; // lat
+
+    // Координаты БПЛА в AGESC (для рисования линий)
+    QVector<double> coord_bpla_gsc = ASDCoordConvertor::convGeoToGsc(
+        cur_pos_bpla[1] * DEG_TO_RAD,
+        cur_pos_bpla[0] * DEG_TO_RAD,
+        10.0 / 1000.0  // 10м в км
+    );
+    QVector<double> coord_bpla_agesc = ASDCoordConvertor::convGscToAgesc(coord_bpla_gsc, time);
+    QVector<double> bpla_agesc_m(3);
+    bpla_agesc_m[0] = coord_bpla_agesc[0] * 1000;
+    bpla_agesc_m[1] = coord_bpla_agesc[1] * 1000;
+    bpla_agesc_m[2] = coord_bpla_agesc[2] * 1000;
+
+    // Проверяем каждый КА
+    for(int i = 0; i < m_ka_list.size(); i++)
+    {
+        ASDOrbitalObjectPar ka_par = m_ka_list[i];
+        int ka_id = ka_par.idVeh;
+
+        if(ka_id == 0) continue; // Пропускаем КА без ID
+
+        // Получаем координаты КА в AGESC
+        ASDOrbitalVehicle ka_vehicle(ka_par);
+        QVector<double> ka_agesc_km = ka_vehicle.getCoordAGESC(time);
+
+        // Получаем gamma для КА
+        double ka_gamma = 30.0; // По умолчанию
+        if(ka_par.bsa.size() > 0) {
+            ka_gamma = ka_par.bsa[0].gamma;
+        }
+
+        // Проверка видимости
+        if(isKaVisible(time, ka_agesc_km, cur_pos_bpla_geo, ka_gamma))
+        {
+            currently_visible.insert(ka_id);
+
+            // Создаем/обновляем линию если её нет
+            if(!m_visibility_lines.contains(ka_id))
+            {
+                newly_visible.insert(ka_id);
+
+                QVector<double> ka_agesc_m(3);
+                ka_agesc_m[0] = ka_agesc_km[0] * 1000;
+                ka_agesc_m[1] = ka_agesc_km[1] * 1000;
+                ka_agesc_m[2] = ka_agesc_km[2] * 1000;
+
+                osg::ref_ptr<osg::Geode> line = createVisibilityLine(bpla_agesc_m, ka_agesc_m, ka_id);
+                scene->m_root_agsk->addChild(line);
+                m_visibility_lines[ka_id] = line;
+            }
+            else
+            {
+                // Обновляем существующую линию
+                QVector<double> ka_agesc_m(3);
+                ka_agesc_m[0] = ka_agesc_km[0] * 1000;
+                ka_agesc_m[1] = ka_agesc_km[1] * 1000;
+                ka_agesc_m[2] = ka_agesc_km[2] * 1000;
+
+                osg::ref_ptr<osg::Geode> old_line = m_visibility_lines[ka_id];
+                if(old_line.valid()) {
+                    scene->m_root_agsk->removeChild(old_line);
+                }
+
+                osg::ref_ptr<osg::Geode> new_line = createVisibilityLine(bpla_agesc_m, ka_agesc_m, ka_id);
+                scene->m_root_agsk->addChild(new_line);
+                m_visibility_lines[ka_id] = new_line;
+            }
+        }
+    }
+
+    // Удаляем линии к КА, которые больше не видны
+    auto it = m_visibility_lines.begin();
+    while(it != m_visibility_lines.end())
+    {
+        if(!currently_visible.contains(it.key()))
+        {
+            lost_visibility.insert(it.key());
+
+            if(it.value().valid()) {
+                scene->m_root_agsk->removeChild(it.value());
+            }
+            it = m_visibility_lines.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+
+    // Компактный лог
+    if(newly_visible.size() > 0) {
+        qDebug() << "БПЛА #" << m_BPLA.id_bpla << "→ Видны КА:" << currently_visible;
+    }
+    if(lost_visibility.size() > 0) {
+        qDebug() << "БПЛА #" << m_BPLA.id_bpla << "→ Потеряна видимость КА:" << lost_visibility;
+    }
 }
