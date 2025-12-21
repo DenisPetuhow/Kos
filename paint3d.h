@@ -3,6 +3,7 @@
 #include "ASD/asdtype.h"
 #include "ASD/orbitalmotion.h"
 #include "ASD/orbitalvehicle.h"
+#include "ASD/satellitegammaconfig.h"
 #include "gui3D/scene3d.h"
 #include "gui3D/orbitveh3d.h"
 #include "gui3D/addpointearth.h"
@@ -21,6 +22,9 @@ class CPaint3D
 {
 public:
     CPaint3D();
+
+    // Загрузить конфигурацию gamma из XML
+    void loadGammaConfig(const QString& configPath);
 
 
 
@@ -66,6 +70,8 @@ private:
     QMap<QDateTime,  QPolygonF>  m_kazon;
     QDateTime Curtime;
 
+    // Конфигурация gamma для разных типов спутников
+    SatelliteGammaConfig m_gammaConfig;
 };
 
 #endif // CPAINT3D_H

@@ -3,8 +3,22 @@
 
 CPaint3D::CPaint3D()
 {
-
+    // Попытка загрузить конфигурацию gamma при создании объекта
+    loadGammaConfig("config/satellite_gamma_config.xml");
 }
+
+void CPaint3D::loadGammaConfig(const QString& configPath)
+{
+    if (m_gammaConfig.loadFromXML(configPath))
+    {
+        qDebug() << "Конфигурация gamma успешно загружена из" << configPath;
+    }
+    else
+    {
+        qWarning() << "Не удалось загрузить конфигурацию gamma. Будет использоваться автоматический расчет.";
+    }
+}
+
 void CPaint3D::setPlan(QVector<ASDZoneVisible> zone)
 {
     m_zone.clear();
@@ -96,7 +110,7 @@ void CPaint3D::calc()
             ASDBsePar bse;
             bse.type=COMMUNICATION;
 
-            // Рассчитываем gamma из высоты орбиты КА
+            // Получаем высоту орбиты из TLE или Кеплеровых элементов
             double altitude_km = 500.0; // По умолчанию
             if(m_ka[i].type_dat == 1) {
                 // TLE данные - извлекаем высоту из большой полуоси
@@ -106,7 +120,19 @@ void CPaint3D::calc()
                 // Кеплеровы элементы
                 altitude_km = m_ka[i].kep.a - R_EARTH;
             }
-            bse.gamma = asin(R_EARTH / (R_EARTH + altitude_km)) * RAD_TO_DEG;
+
+            // Получаем имя спутника для поиска в конфигурации
+            QString satName = m_ka[i].stle.satName;
+            if(m_ka[i].type_dat == 0)
+                satName = m_ka[i].kep.name;
+
+            // Получаем gamma из конфигурации (автоматически или по имени спутника)
+            if(m_gammaConfig.isLoaded()) {
+                bse.gamma = m_gammaConfig.getGammaForSatellite(satName, altitude_km);
+            } else {
+                // Если конфигурация не загружена - расчет по формуле
+                bse.gamma = asin(R_EARTH / (R_EARTH + altitude_km)) * RAD_TO_DEG;
+            }
 
             ASDObject3D* orb = new addOrbit(ka);
             m_page->addObject3D(orb);

@@ -76,6 +76,7 @@ SOURCES += \
         ASD/clipper.cpp \
         ASD/SunPosition.cpp \
         ASD/asddatum.cpp \
+        ASD/satellitegammaconfig.cpp \
         calc_bpla_plan.cpp \
         gui3D/add_bpla.cpp \
         gui3D/scene3d.cpp \
@@ -123,6 +124,7 @@ HEADERS += \
     ASD/clipper.hpp \
     ASD/SunPosition.hpp \
     ASD/asddatum.h \
+    ASD/satellitegammaconfig.h \
     calc_bpla_plan.h \
     gui3D/add_bpla.h \
     gui3D/scene3d.h \

@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Конфигурация угла радиовидимости (gamma) для различных спутниковых систем
+
+  gamma - половина угла конуса радиовидимости в градусах
+
+  Значения gamma зависят от:
+  1. Высоты орбиты (геометрический фактор)
+  2. Характеристик бортовой аппаратуры (антенна, мощность)
+  3. Минимального угла возвышения для устойчивой связи
+
+  Для систем связи LEO (Иридиум, Гонец):
+  - Геометрический gamma большой (55-63°)
+  - Реальный gamma ограничен антенной (5-15°)
+
+  Для навигационных систем MEO/HEO (ГЛОНАСС, GPS):
+  - Геометрический gamma средний (14-20°)
+  - Реальный gamma близок к геометрическому
+-->
+
+<satellite_gamma_config>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- РОССИЙСКИЕ СИСТЕМЫ -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+
+  <!-- Система связи Гонец -->
+  <satellite_group>
+    <name>Гонец</name>
+    <pattern>GONETS|ГОНЕЦ</pattern>
+    <orbit_altitude>1400</orbit_altitude>
+    <gamma>10.0</gamma>
+    <description>Российская система персональной спутниковой связи и передачи данных</description>
+  </satellite_group>
+
+  <!-- ГЛОНАСС -->
+  <satellite_group>
+    <name>ГЛОНАСС</name>
+    <pattern>GLONASS|COSMOS 2|ГЛОНАСС</pattern>
+    <orbit_altitude>19100</orbit_altitude>
+    <gamma>14.5</gamma>
+    <description>Глобальная навигационная спутниковая система России</description>
+  </satellite_group>
+
+  <!-- Меридиан (связь) -->
+  <satellite_group>
+    <name>Меридиан</name>
+    <pattern>MERIDIAN|МЕРИДИАН</pattern>
+    <orbit_altitude>39000</orbit_altitude>
+    <gamma>9.5</gamma>
+    <description>Российская система спутниковой связи (эллиптическая орбита)</description>
+  </satellite_group>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- МЕЖДУНАРОДНЫЕ СИСТЕМЫ СВЯЗИ -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+
+  <!-- Iridium -->
+  <satellite_group>
+    <name>Iridium</name>
+    <pattern>IRIDIUM|ИРИДИ</pattern>
+    <orbit_altitude>780</orbit_altitude>
+    <gamma>8.2</gamma>
+    <description>Глобальная система персональной спутниковой связи</description>
+  </satellite_group>
+
+  <!-- Iridium NEXT (новое поколение) -->
+  <satellite_group>
+    <name>Iridium NEXT</name>
+    <pattern>IRIDIUM NEXT|IRIDIUM-[0-9]+</pattern>
+    <orbit_altitude>780</orbit_altitude>
+    <gamma>8.2</gamma>
+    <description>Новое поколение спутников Iridium</description>
+  </satellite_group>
+
+  <!-- Globalstar -->
+  <satellite_group>
+    <name>Globalstar</name>
+    <pattern>GLOBALSTAR</pattern>
+    <orbit_altitude>1414</orbit_altitude>
+    <gamma>10.0</gamma>
+    <description>Система спутниковой связи</description>
+  </satellite_group>
+
+  <!-- Orbcomm -->
+  <satellite_group>
+    <name>Orbcomm</name>
+    <pattern>ORBCOMM</pattern>
+    <orbit_altitude>715</orbit_altitude>
+    <gamma>12.0</gamma>
+    <description>Система передачи данных для M2M (machine-to-machine)</description>
+  </satellite_group>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- НАВИГАЦИОННЫЕ СИСТЕМЫ -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+
+  <!-- GPS -->
+  <satellite_group>
+    <name>GPS</name>
+    <pattern>GPS|NAVSTAR</pattern>
+    <orbit_altitude>20200</orbit_altitude>
+    <gamma>13.9</gamma>
+    <description>Глобальная система позиционирования США</description>
+  </satellite_group>
+
+  <!-- Galileo -->
+  <satellite_group>
+    <name>Galileo</name>
+    <pattern>GSAT|GALILEO</pattern>
+    <orbit_altitude>23222</orbit_altitude>
+    <gamma>12.5</gamma>
+    <description>Европейская глобальная навигационная система</description>
+  </satellite_group>
+
+  <!-- BeiDou (Compass) -->
+  <satellite_group>
+    <name>BeiDou</name>
+    <pattern>BEIDOU|COMPASS</pattern>
+    <orbit_altitude>21528</orbit_altitude>
+    <gamma>13.0</gamma>
+    <description>Китайская навигационная система</description>
+  </satellite_group>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- ДИСТАНЦИОННОЕ ЗОНДИРОВАНИЕ ЗЕМЛИ -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+
+  <!-- Канопус, Ресурс (российские ДЗЗ) -->
+  <satellite_group>
+    <name>Канопус/Ресурс</name>
+    <pattern>KANOPUS|RESURS|КАНОПУС|РЕСУРС</pattern>
+    <orbit_altitude>510</orbit_altitude>
+    <gamma>25.0</gamma>
+    <description>Российские спутники дистанционного зондирования Земли</description>
+  </satellite_group>
+
+  <!-- Landsat -->
+  <satellite_group>
+    <name>Landsat</name>
+    <pattern>LANDSAT</pattern>
+    <orbit_altitude>705</orbit_altitude>
+    <gamma>20.0</gamma>
+    <description>Американские спутники наблюдения за Землей</description>
+  </satellite_group>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- МКС И ПРОЧИЕ ОБЪЕКТЫ НА НИЗКИХ ОРБИТАХ -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+
+  <!-- МКС (Международная космическая станция) -->
+  <satellite_group>
+    <name>МКС</name>
+    <pattern>ISS|ZARYA|МКС</pattern>
+    <orbit_altitude>420</orbit_altitude>
+    <gamma>30.0</gamma>
+    <description>Международная космическая станция</description>
+  </satellite_group>
+
+  <!-- Starlink -->
+  <satellite_group>
+    <name>Starlink</name>
+    <pattern>STARLINK</pattern>
+    <orbit_altitude>550</orbit_altitude>
+    <gamma>25.0</gamma>
+    <description>Спутниковая группировка для интернета SpaceX</description>
+  </satellite_group>
+
+  <!-- OneWeb -->
+  <satellite_group>
+    <name>OneWeb</name>
+    <pattern>ONEWEB</pattern>
+    <orbit_altitude>1200</orbit_altitude>
+    <gamma>15.0</gamma>
+    <description>Спутниковая группировка для интернета OneWeb</description>
+  </satellite_group>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- ЗНАЧЕНИЕ ПО УМОЛЧАНИЮ -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+
+  <!-- Если спутник не распознан - расчет по формуле из высоты -->
+  <default>
+    <gamma_calculation>automatic</gamma_calculation>
+    <formula>asin(R_EARTH / (R_EARTH + altitude))</formula>
+    <description>Для неизвестных спутников gamma рассчитывается автоматически из высоты орбиты</description>
+  </default>
+
+</satellite_gamma_config>
