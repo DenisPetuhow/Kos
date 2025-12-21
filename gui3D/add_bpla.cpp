@@ -548,11 +548,17 @@ void add_BPLA::updateVisibilityLines(QDateTime time, ASDScene3D* scene)
         }
     }
 
-    // Компактный лог
+    // Компактный лог с временными метками
     if(newly_visible.size() > 0) {
-        qDebug() << "БПЛА #" << m_BPLA.id_bpla << "→ Видны КА:" << currently_visible;
+        QString time_str = time.toString("yyyy-MM-dd HH:mm:ss");
+        qDebug() << "[" << time_str << "] БПЛА #" << m_BPLA.id_bpla
+                 << "→ Вход в зону видимости КА:" << newly_visible
+                 << "(всего видно:" << currently_visible.size() << ")";
     }
     if(lost_visibility.size() > 0) {
-        qDebug() << "БПЛА #" << m_BPLA.id_bpla << "→ Потеряна видимость КА:" << lost_visibility;
+        QString time_str = time.toString("yyyy-MM-dd HH:mm:ss");
+        qDebug() << "[" << time_str << "] БПЛА #" << m_BPLA.id_bpla
+                 << "→ Выход из зоны видимости КА:" << lost_visibility
+                 << "(осталось видно:" << currently_visible.size() << ")";
     }
 }
