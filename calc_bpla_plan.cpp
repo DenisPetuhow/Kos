@@ -180,7 +180,15 @@ void Calc_bpla_plan::mainCalc_BpLA()
             ASDOrbitalVehicle ka(_obj);
 
             QVector<double> coordKA = ka.getCurrPos(time);
-            bool inZone = iszone(time,coordKA,curPosBpLA);
+
+            // Gamma КА - ТА ЖЕ, что у зеленого конуса и 3D-линий.
+            // Если bsa не заполнен (план считается до CPaint3D::calc()),
+            // iszone возьмет геометрический максимум из высоты КА.
+            double gamma_deg = -1.0;
+            if(_obj.bsa.size() > 0)
+                gamma_deg = _obj.bsa[0].gamma;
+
+            bool inZone = iszone(time,coordKA,curPosBpLA,gamma_deg);
 
             if(inZone == true){
 
@@ -199,50 +207,80 @@ void Calc_bpla_plan::mainCalc_BpLA()
 
 }
 
-bool Calc_bpla_plan::iszone(QDateTime curr_time, QVector<double> posOrb, QVector<double> posBpLA)
+// ═══════════════════════════════════════════════════════════════════════════
+// ПРОВЕРКА ПОПАДАНИЯ БПЛА В ЗОНУ ПОКРЫТИЯ КА
+//
+// Геометрия согласована с зеленым конусом (addCone) и 3D-линиями
+// (add_BPLA::isKaVisible): проверяется НАДИРНЫЙ угол - угол между осью
+// конуса (КА -> центр Земли) и вектором (КА -> БПЛА). БПЛА в зоне <=>
+// надирный угол < gamma и КА над горизонтом БПЛА.
+//
+// Старая версия сравнивала фиксированный порог 30° с углом МЕСТА от БПЛА -
+// другая геометрия, из-за чего гистограмма не совпадала с 3D-линиями.
+// Вдобавок lat/lon передавались в convGscToSsc в ГРАДУСАХ, а функция ждет
+// РАДИАНЫ - топоцентрическая система строилась неверно.
+// ═══════════════════════════════════════════════════════════════════════════
+bool Calc_bpla_plan::iszone(QDateTime curr_time, QVector<double> posOrb,
+                            QVector<double> posBpLA, double gamma_deg)
 {
-    bool to_returv = false;
     ASDCoordConvertor conv;
 
-    QVector<double> coord_scc(6, 0);
+    // 1. Обе точки в ГСК на момент времени, км
+    QVector<double> ka_gsc = conv.convAgescToGsc(posOrb, curr_time);
+    QVector<double> bpla_gsc = ASDCoordConvertor::convGeoToGsc(
+        posBpLA[1] * DEG_TO_RAD,   // lat, радианы
+        posBpLA[0] * DEG_TO_RAD,   // lon, радианы
+        BPLA_ALT_KM);
 
-    double Azim;
-    double Elev;
-    double r;
-    double elmin =30*DEG_TO_RAD;
-
-
-    coord_scc = conv.convGscToSsc(conv.convAgescToGsc(posOrb,curr_time),posBpLA[1],posBpLA[0],0.0);
-    if (coord_scc[1] > -100)
+    // 2. Если gamma не задан - геометрический максимум из фактической
+    //    высоты КА (как в CPaint3D::calc при отсутствии конфигурации)
+    double r_ka = sqrt(ka_gsc[0]*ka_gsc[0] + ka_gsc[1]*ka_gsc[1] + ka_gsc[2]*ka_gsc[2]);
+    if(gamma_deg <= 0.0)
     {
-
-        r = pow(coord_scc[0] * coord_scc[0] + coord_scc[1] * coord_scc[1]
-                + coord_scc[2] * coord_scc[2], 0.5);
-        Elev = conv.angle(coord_scc[1] / r, pow(coord_scc[0] * coord_scc[0]
-                + coord_scc[2] * coord_scc[2], 0.5) / r);
-        Azim= conv.angle(coord_scc[2]/ pow(coord_scc[0] * coord_scc[0]+ coord_scc[2] * coord_scc[2], 0.5),
-                coord_scc[0]/ pow(coord_scc[0] * coord_scc[0]+ coord_scc[2] * coord_scc[2], 0.5));
-
-        if(Elev>M_PI)
-            Elev = 2*M_PI-Elev;
-
-        if ((Azim) < 0)
-            Azim += 2 * M_PI;
-
-
-        if(elmin < Elev)
-        {
-            ell=Elev;
-            to_returv = true;
-            return to_returv;
-        }
-        else
-        {
-            return false;
-        }
+        double h = r_ka - R_EARTH;
+        if(h < 1.0) h = 1.0;
+        gamma_deg = asin(R_EARTH / (R_EARTH + h)) * RAD_TO_DEG - 0.5;
     }
 
-    return to_returv;
+    // 3. Ось конуса: от КА к центру Земли (надир)
+    double ax = -ka_gsc[0];
+    double ay = -ka_gsc[1];
+    double az = -ka_gsc[2];
 
+    // 4. Вектор от КА к БПЛА
+    double bx = bpla_gsc[0] - ka_gsc[0];
+    double by = bpla_gsc[1] - ka_gsc[1];
+    double bz = bpla_gsc[2] - ka_gsc[2];
+
+    double na = sqrt(ax*ax + ay*ay + az*az);
+    double nb = sqrt(bx*bx + by*by + bz*bz);
+    if(na < 1e-9 || nb < 1e-9)
+        return false;
+
+    // 5. Надирный угол
+    double cos_nadir = (ax*bx + ay*by + az*bz) / (na * nb);
+    if(cos_nadir > 1.0)  cos_nadir = 1.0;
+    if(cos_nadir < -1.0) cos_nadir = -1.0;
+    double nadir_angle = acos(cos_nadir);
+
+    if(nadir_angle > gamma_deg * DEG_TO_RAD)
+        return false;
+
+    // 6. КА над горизонтом БПЛА: скалярное произведение зенита БПЛА
+    //    (направление bpla_gsc от центра Земли) и вектора БПЛА->КА > 0
+    double vx = ka_gsc[0] - bpla_gsc[0];
+    double vy = ka_gsc[1] - bpla_gsc[1];
+    double vz = ka_gsc[2] - bpla_gsc[2];
+    double elev_dot = bpla_gsc[0]*vx + bpla_gsc[1]*vy + bpla_gsc[2]*vz;
+    if(elev_dot <= 0.0)
+        return false;
+
+    // Для совместимости сохраняем угол места (использовался через поле ell)
+    double nv = sqrt(vx*vx + vy*vy + vz*vz);
+    double nu = sqrt(bpla_gsc[0]*bpla_gsc[0] + bpla_gsc[1]*bpla_gsc[1] + bpla_gsc[2]*bpla_gsc[2]);
+    if(nv > 1e-9 && nu > 1e-9)
+        ell = asin(elev_dot / (nv * nu));
+
+    return true;
 }
 
