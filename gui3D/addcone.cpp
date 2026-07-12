@@ -1,7 +1,6 @@
 #include "addcone.h"
 //#include "colorvisitor.h"
 #include "osg/BlendColor"
-osg::ref_ptr<osg::MatrixTransform> addCone::m_cone = 0;
 
 addCone::addCone(ASDOrbitalVehicle ka, ASDBsePar par,QMap<QDateTime,int> mapP)
 {

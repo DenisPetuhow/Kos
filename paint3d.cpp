@@ -1,4 +1,6 @@
 #include "paint3d.h"
+#include <QCoreApplication>
+#include <QDir>
 
 
 CPaint3D::CPaint3D()
@@ -9,14 +11,28 @@ CPaint3D::CPaint3D()
 
 void CPaint3D::loadGammaConfig(const QString& configPath)
 {
-    if (m_gammaConfig.loadFromXML(configPath))
+    // Путь "config/..." относителен ТЕКУЩЕЙ РАБОЧЕЙ ДИРЕКТОРИИ, которая при
+    // запуске из Qt Creator может отличаться от папки с исполняемым файлом.
+    // Поэтому перебираем несколько типовых расположений.
+    QStringList candidates;
+    candidates << configPath
+               << QCoreApplication::applicationDirPath() + "/" + configPath
+               << QCoreApplication::applicationDirPath() + "/../" + configPath
+               << "../" + configPath
+               << "../../" + configPath;
+
+    for (const QString& path : candidates)
     {
-        qDebug() << "Конфигурация gamma успешно загружена из" << configPath;
+        if (QFile::exists(path) && m_gammaConfig.loadFromXML(path))
+        {
+            qDebug() << "Конфигурация gamma успешно загружена из" << path;
+            return;
+        }
     }
-    else
-    {
-        qWarning() << "Не удалось загрузить конфигурацию gamma. Будет использоваться автоматический расчет.";
-    }
+
+    qWarning() << "Не удалось найти" << configPath
+               << "- gamma будет рассчитываться геометрически из высоты орбиты."
+               << "Рабочая директория:" << QDir::currentPath();
 }
 
 void CPaint3D::setPlan(QVector<ASDZoneVisible> zone)
@@ -126,30 +142,47 @@ void CPaint3D::calc()
             if(m_ka[i].type_dat == 0)
                 satName = m_ka[i].kep.name;
 
-            // Получаем gamma из конфигурации (автоматически или по имени спутника)
+            // Геометрический максимум надирного угла: конус касается горизонта Земли.
+            // Больше него gamma физически быть не может (конус уйдет за горизонт),
+            // а r = h*tan(gamma) при gamma -> 90° стремится к бесконечности.
+            double gamma_max_deg = asin(R_EARTH / (R_EARTH + altitude_km)) * RAD_TO_DEG;
+
+            // Получаем gamma из конфигурации (по имени спутника) или расчетом
             if(m_gammaConfig.isLoaded()) {
                 bse.gamma = m_gammaConfig.getGammaForSatellite(satName, altitude_km);
             } else {
-                // Если конфигурация не загружена - расчет по формуле
-                bse.gamma = asin(R_EARTH / (R_EARTH + altitude_km)) * RAD_TO_DEG;
+                bse.gamma = gamma_max_deg;
             }
+
+            // Приоритет ручных настроек из GUI/XML сценария (если заданы)
+            if(par.bsa.size() > 0) {
+                bse = par.bsa[0];
+            }
+
+            // Ограничение: gamma не может превышать геометрический максимум.
+            // Небольшой отступ 0.5° чтобы основание конуса не совпадало с горизонтом.
+            if(bse.gamma >= gamma_max_deg) {
+                bse.gamma = gamma_max_deg - 0.5;
+            }
+            if(bse.gamma <= 0.0) {
+                bse.gamma = 5.0;
+            }
+
+            qDebug() << "[+] КА #" << par.idVeh << satName
+                     << "| h =" << altitude_km << "км"
+                     << "| gamma =" << bse.gamma << "° (макс." << gamma_max_deg << "°)";
 
             ASDObject3D* orb = new addOrbit(ka);
             m_page->addObject3D(orb);
 
-            // Если есть данные из GUI/XML, используем их (они перезапишут gamma)
-            for(int i  =0; i<par.bsa.size(); i++)
-            {
-                bse = par.bsa[i];
-            }
-
-            // Сохраняем gamma обратно в структуру
-            if(par.bsa.size() == 0) {
-                par.bsa.push_back(bse);
+            // ВАЖНО: пишем gamma НАПРЯМУЮ в m_ka[i].bsa ДО calc_bpla(),
+            // иначе БПЛА получит через setKaList(m_ka) пустой bsa
+            if(m_ka[i].bsa.size() == 0) {
+                m_ka[i].bsa.push_back(bse);
             } else {
-                par.bsa[0].gamma = bse.gamma;
+                m_ka[i].bsa[0].gamma = bse.gamma;
             }
-            m_ka[i].bsa = par.bsa;
+            par.bsa = m_ka[i].bsa;
 
             par.nameVeh=m_ka[i].stle.satName;
             if(m_ka[i].type_dat==0)

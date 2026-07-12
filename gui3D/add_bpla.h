@@ -18,6 +18,12 @@
 class add_BPLA : public ASDObject3D, ASDPositionObj
 {
 public:
+    // ЕДИНАЯ высота полета БПЛА в км. Используется ВЕЗДЕ:
+    // модель, траектория, старт линии видимости, проверка видимости.
+    // Раньше модель рисовалась на 10 км, а линия стартовала с 10 м - линия
+    // была оторвана от модели.
+    static constexpr double BPLA_ALT_KM = 10.0;
+
     add_BPLA(ASD_bpla_struct _BPLA, ASDScene3D * scene);
 
     ASDScene3D * m_scene;

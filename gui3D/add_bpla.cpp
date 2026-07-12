@@ -215,7 +215,7 @@ void add_BPLA::createTrajectoryLine(ASDScene3D* scene)
         QVector<double> coord = ASDCoordConvertor::convGeoToGsc(
             point.y() * DEG_TO_RAD,
             point.x() * DEG_TO_RAD,
-            10
+            BPLA_ALT_KM
         );
 
         vertices->push_back(osg::Vec3(coord[0]*1000, coord[1]*1000, coord[2]*1000));
@@ -275,11 +275,11 @@ void add_BPLA::repaint(QDateTime time, ASDScene3D *scene)
         return;
     }
 
-    // Преобразование координат
+    // Преобразование координат (высота - единая константа BPLA_ALT_KM)
     QVector<double> coord = ASDCoordConvertor::convGeoToGsc(
         cur_pos_bpla[1] * DEG_TO_RAD,
         cur_pos_bpla[0] * DEG_TO_RAD,
-        10
+        BPLA_ALT_KM
     );
 
     // Матрица трансформации
@@ -375,7 +375,24 @@ void add_BPLA::setKaList(QVector<ASDOrbitalObjectPar> ka_list)
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ПРОВЕРКА ВИДИМОСТИ КА С ПОЗИЦИИ БПЛА
-// Алгоритм скопирован из calc_bpla_plan.cpp::iszone()
+//
+// ГЕОМЕТРИЯ СОГЛАСОВАНА С ЗЕЛЕНЫМ КОНУСОМ (addCone)!
+//
+// Конус в addCone строится так:
+//   - ось: от КА к центру Земли (надир)
+//   - угол полураствора: gamma
+//   - радиус основания: r = h * tan(gamma)
+//
+// Значит БПЛА "внутри зоны покрытия" тогда и только тогда, когда
+// угол между осью конуса (КА -> надир) и вектором (КА -> БПЛА)
+// МЕНЬШЕ gamma. Это надирный угол.
+//
+// Старая версия сравнивала gamma с углом МЕСТА (elevation) от БПЛА -
+// это ДРУГАЯ геометрия, из-за чего линии не совпадали с конусом:
+// при большом gamma конус огромный, а Elev > gamma почти не выполнялся.
+//
+// Дополнительно проверяем, что КА над горизонтом БПЛА (нет "видимости
+// сквозь Землю"), если gamma задан больше геометрического максимума.
 // ═══════════════════════════════════════════════════════════════════════════
 bool add_BPLA::isKaVisible(QDateTime time,
                            QVector<double> coordKA_AGESC_km,
@@ -383,27 +400,49 @@ bool add_BPLA::isKaVisible(QDateTime time,
                            double ka_gamma_deg)
 {
     ASDCoordConvertor conv;
-    double elmin = ka_gamma_deg * DEG_TO_RAD;
 
-    // Преобразование: AGESC → GSC → TSC (топоцентрическая от БПЛА)
-    QVector<double> coord_gsc = conv.convAgescToGsc(coordKA_AGESC_km, time);
-    QVector<double> coord_scc = conv.convGscToSsc(
-        coord_gsc,
-        coordBPLA_geo_deg[1] * DEG_TO_RAD,  // lat в радианах
-        coordBPLA_geo_deg[0] * DEG_TO_RAD,  // lon в радианах
-        0.0                                  // высота БПЛА (10м → 0км)
+    // Обе точки приводим к ГСК на момент time
+    QVector<double> ka_gsc = conv.convAgescToGsc(coordKA_AGESC_km, time);
+    QVector<double> bpla_gsc = ASDCoordConvertor::convGeoToGsc(
+        coordBPLA_geo_deg[1] * DEG_TO_RAD,   // lat, радианы
+        coordBPLA_geo_deg[0] * DEG_TO_RAD,   // lon, радианы
+        BPLA_ALT_KM                          // та же высота, что у модели БПЛА
     );
 
-    if (coord_scc[1] > -100) {
-        double r = sqrt(coord_scc[0]*coord_scc[0] + coord_scc[1]*coord_scc[1] + coord_scc[2]*coord_scc[2]);
-        double Elev = conv.angle(coord_scc[1] / r,
-                                 sqrt(coord_scc[0]*coord_scc[0] + coord_scc[2]*coord_scc[2]) / r);
-        if(Elev > M_PI)
-            Elev = 2*M_PI - Elev;
+    // Ось конуса: от КА к центру Земли (надир) = -ka_gsc
+    double ax = -ka_gsc[0];
+    double ay = -ka_gsc[1];
+    double az = -ka_gsc[2];
 
-        return (elmin < Elev);
-    }
-    return false;
+    // Вектор от КА к БПЛА
+    double bx = bpla_gsc[0] - ka_gsc[0];
+    double by = bpla_gsc[1] - ka_gsc[1];
+    double bz = bpla_gsc[2] - ka_gsc[2];
+
+    double na = sqrt(ax*ax + ay*ay + az*az);
+    double nb = sqrt(bx*bx + by*by + bz*bz);
+    if(na < 1e-9 || nb < 1e-9)
+        return false;
+
+    // Надирный угол: угол между осью конуса и направлением на БПЛА
+    double cos_nadir = (ax*bx + ay*by + az*bz) / (na * nb);
+    if(cos_nadir > 1.0)  cos_nadir = 1.0;
+    if(cos_nadir < -1.0) cos_nadir = -1.0;
+    double nadir_angle = acos(cos_nadir);
+
+    // БПЛА вне конуса
+    if(nadir_angle > ka_gamma_deg * DEG_TO_RAD)
+        return false;
+
+    // Проверка горизонта: угол места КА от БПЛА должен быть > 0.
+    // Зенит БПЛА = направление bpla_gsc (от центра Земли),
+    // Elev > 0 <=> скалярное произведение (зенит, БПЛА->КА) > 0
+    double vx = ka_gsc[0] - bpla_gsc[0];
+    double vy = ka_gsc[1] - bpla_gsc[1];
+    double vz = ka_gsc[2] - bpla_gsc[2];
+    double elev_dot = bpla_gsc[0]*vx + bpla_gsc[1]*vy + bpla_gsc[2]*vz;
+
+    return (elev_dot > 0.0);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -460,11 +499,13 @@ void add_BPLA::updateVisibilityLines(QDateTime time, ASDScene3D* scene)
     cur_pos_bpla_geo[0] = cur_pos_bpla[0]; // lon
     cur_pos_bpla_geo[1] = cur_pos_bpla[1]; // lat
 
-    // Координаты БПЛА в AGESC (для рисования линий)
+    // Координаты БПЛА в AGESC (для рисования линий).
+    // Высота ТА ЖЕ, что у 3D модели БПЛА (BPLA_ALT_KM) - линия начинается
+    // ровно в модели, а не на поверхности Земли.
     QVector<double> coord_bpla_gsc = ASDCoordConvertor::convGeoToGsc(
         cur_pos_bpla[1] * DEG_TO_RAD,
         cur_pos_bpla[0] * DEG_TO_RAD,
-        10.0 / 1000.0  // 10м в км
+        BPLA_ALT_KM
     );
     QVector<double> coord_bpla_agesc = ASDCoordConvertor::convGscToAgesc(coord_bpla_gsc, time);
     QVector<double> bpla_agesc_m(3);
@@ -484,10 +525,19 @@ void add_BPLA::updateVisibilityLines(QDateTime time, ASDScene3D* scene)
         ASDOrbitalVehicle ka_vehicle(ka_par);
         QVector<double> ka_agesc_km = ka_vehicle.getCoordAGESC(time);
 
-        // Получаем gamma для КА
-        double ka_gamma = 30.0; // По умолчанию
+        // Получаем gamma для КА - ТОТ ЖЕ, что использован для зеленого конуса
+        double ka_gamma = 30.0; // Резерв на случай пустого bsa
         if(ka_par.bsa.size() > 0) {
             ka_gamma = ka_par.bsa[0].gamma;
+        } else {
+            // bsa пуст - значит calc() не заполнил m_ka[i].bsa до setKaList().
+            // Сообщаем один раз на КА, чтобы не заспамить лог.
+            static QSet<int> warned;
+            if(!warned.contains(ka_id)) {
+                qWarning() << "[БПЛА] КА #" << ka_id << ka_par.nameVeh
+                           << ": bsa пуст, используется gamma =" << ka_gamma << "° по умолчанию";
+                warned.insert(ka_id);
+            }
         }
 
         // Проверка видимости

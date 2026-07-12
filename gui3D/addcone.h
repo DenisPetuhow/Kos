@@ -10,7 +10,8 @@ class addCone : public ASDObject3D, ASDPositionObj
 
 public:
     addCone(ASDOrbitalVehicle ka, ASDBsePar par,QMap<QDateTime,int> mapP);
-    static osg::ref_ptr<osg::MatrixTransform> m_cone;
+    // Конус КАЖДОГО КА хранится в своем экземпляре (был static - все КА делили один указатель)
+    osg::ref_ptr<osg::MatrixTransform> m_cone;
 //void setzon(QMap<QDateTime,int> mapP);
     bool m_create_object;
 
