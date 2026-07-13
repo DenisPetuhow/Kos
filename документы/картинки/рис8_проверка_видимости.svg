@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <marker id="arrN" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#c0392b"/>
+    </marker>
+    <marker id="arrV1" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#1a7a3c"/>
+    </marker>
+    <marker id="arrV2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#95a5a6"/>
+    </marker>
+  </defs>
+  <rect width="800" height="500" fill="#fafcff"/>
+  <text x="400" y="30" text-anchor="middle" font-size="17" fill="#2c3e50" font-weight="bold">Проверка «БПЛА в зоне?» — сравниваем надирный угол θ с γ</text>
+
+  <!-- Поверхность Земли -->
+  <path d="M 50 430 A 820 820 0 0 1 750 430" fill="none" stroke="#155a9c" stroke-width="3"/>
+  <path d="M 50 430 A 820 820 0 0 1 750 430 L 750 500 L 50 500 Z" fill="#1c6dc0" fill-opacity="0.10" stroke="none"/>
+
+  <!-- Конус покрытия -->
+  <polygon points="390,80 240,372 540,372" fill="#3cb371" fill-opacity="0.20" stroke="none"/>
+  <line x1="390" y1="80" x2="240" y2="372" stroke="#2e8b57" stroke-width="2"/>
+  <line x1="390" y1="80" x2="540" y2="372" stroke="#2e8b57" stroke-width="2"/>
+  <ellipse cx="390" cy="372" rx="150" ry="20" fill="#3cb371" fill-opacity="0.28" stroke="#2e8b57" stroke-width="1.6"/>
+  <text x="556" y="352" font-size="14" fill="#2e8b57" font-weight="bold">граница конуса: θ = γ</text>
+
+  <!-- КА -->
+  <circle cx="390" cy="80" r="8" fill="#2c3e50"/>
+  <text x="404" y="72" font-size="16" fill="#2c3e50" font-weight="bold">КА</text>
+
+  <!-- Вектор a: ось на надир -->
+  <line x1="390" y1="80" x2="390" y2="330" stroke="#c0392b" stroke-width="2.6" marker-end="url(#arrN)"/>
+  <text x="398" y="270" font-size="15.5" fill="#c0392b" font-weight="bold">a — ось конуса</text>
+  <text x="398" y="289" font-size="13.5" fill="#c0392b">(от КА к центру Земли)</text>
+
+  <!-- БПЛА-1 внутри: вектор b1 -->
+  <circle cx="470" cy="366" r="7" fill="#1a7a3c"/>
+  <line x1="390" y1="80" x2="465" y2="358" stroke="#1a7a3c" stroke-width="2.4" marker-end="url(#arrV1)"/>
+  <text x="478" y="390" font-size="14" fill="#1a7a3c" font-weight="bold">БПЛА-1</text>
+  <!-- угол между a и b1 -->
+  <path d="M 390 172 A 92 92 0 0 0 413 169" fill="none" stroke="#1a7a3c" stroke-width="2.4"/>
+  <text x="398" y="158" font-size="16" fill="#1a7a3c" font-weight="bold">θ₁</text>
+  <text x="88" y="140" font-size="14.5" fill="#1a7a3c" font-weight="bold">θ₁ &lt; γ  ⇒  БПЛА-1 внутри конуса,</text>
+  <text x="88" y="159" font-size="14.5" fill="#1a7a3c" font-weight="bold">рисуем жёлтую линию ✓</text>
+
+  <!-- БПЛА-2 снаружи: вектор b2 -->
+  <circle cx="660" cy="404" r="7" fill="#95a5a6"/>
+  <line x1="390" y1="80" x2="653" y2="396" stroke="#95a5a6" stroke-width="2.2" stroke-dasharray="7 5" marker-end="url(#arrV2)"/>
+  <text x="672" y="428" font-size="14" fill="#7f8c8d" font-weight="bold">БПЛА-2</text>
+  <path d="M 390 208 A 128 128 0 0 0 484 190" fill="none" stroke="#95a5a6" stroke-width="2.2"/>
+  <text x="452" y="176" font-size="16" fill="#7f8c8d" font-weight="bold">θ₂</text>
+  <text x="560" y="120" font-size="14.5" fill="#7f8c8d" font-weight="bold">θ₂ &gt; γ  ⇒  БПЛА-2 вне конуса,</text>
+  <text x="560" y="139" font-size="14.5" fill="#7f8c8d" font-weight="bold">линии нет ✗</text>
+
+  <!-- Формула -->
+  <rect x="70" y="196" width="250" height="96" rx="10" fill="#fff8ee" stroke="#e0c9a0" stroke-width="1.4"/>
+  <text x="86" y="226" font-size="15" fill="#2c3e50" font-weight="bold">Угол между векторами:</text>
+  <text x="86" y="258" font-size="16" fill="#2c3e50">cos θ = (a · b) / (|a|·|b|)</text>
+  <text x="86" y="282" font-size="13" fill="#666">a·b = aₓbₓ + a_y b_y + a_z b_z</text>
+</svg>

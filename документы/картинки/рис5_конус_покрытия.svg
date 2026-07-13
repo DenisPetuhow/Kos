@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 480" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <marker id="arr5" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#555"/>
+    </marker>
+  </defs>
+  <rect width="780" height="480" fill="#fafcff"/>
+
+  <!-- Поверхность Земли (дуга большого круга) -->
+  <path d="M 40 420 A 800 800 0 0 1 740 420" fill="none" stroke="#155a9c" stroke-width="3"/>
+  <path d="M 40 420 A 800 800 0 0 1 740 420 L 740 480 L 40 480 Z" fill="#1c6dc0" fill-opacity="0.12" stroke="none"/>
+  <text x="80" y="452" font-size="15" fill="#155a9c" font-weight="bold">поверхность Земли</text>
+
+  <!-- Конус покрытия (зелёный) -->
+  <polygon points="380,70 228,362 532,362" fill="#3cb371" fill-opacity="0.22" stroke="none"/>
+  <line x1="380" y1="70" x2="228" y2="362" stroke="#2e8b57" stroke-width="2.2"/>
+  <line x1="380" y1="70" x2="532" y2="362" stroke="#2e8b57" stroke-width="2.2"/>
+  <ellipse cx="380" cy="362" rx="152" ry="22" fill="#3cb371" fill-opacity="0.30" stroke="#2e8b57" stroke-width="1.8"/>
+
+  <!-- КА -->
+  <circle cx="380" cy="70" r="8" fill="#2c3e50"/>
+  <text x="396" y="62" font-size="17" fill="#2c3e50" font-weight="bold">КА</text>
+
+  <!-- Ось конуса: надир -->
+  <line x1="380" y1="70" x2="380" y2="355" stroke="#c0392b" stroke-width="2" stroke-dasharray="7 5"/>
+  <circle cx="380" cy="355" r="5" fill="#c0392b"/>
+  <text x="390" y="345" font-size="14.5" fill="#c0392b" font-weight="bold">надир — точка ровно под КА</text>
+
+  <!-- Угол gamma -->
+  <path d="M 380 140 A 70 70 0 0 0 348 128" fill="none" stroke="#e67e22" stroke-width="2.6"/>
+  <text x="342" y="112" font-size="19" fill="#e67e22" font-weight="bold">γ</text>
+  <text x="150" y="86" font-size="14" fill="#e67e22" font-weight="bold">γ — половина угла раствора,</text>
+  <text x="150" y="104" font-size="14" fill="#e67e22" font-weight="bold">отсчитывается У КА от надира</text>
+
+  <!-- Высота h -->
+  <line x1="352" y1="70" x2="352" y2="355" stroke="#555" stroke-width="1.2" marker-end="url(#arr5)"/>
+  <text x="322" y="220" font-size="16" fill="#555" font-weight="bold">h</text>
+
+  <!-- Радиус основания -->
+  <line x1="380" y1="392" x2="532" y2="392" stroke="#555" stroke-width="1.4" marker-end="url(#arr5)"/>
+  <text x="418" y="412" font-size="15.5" fill="#555" font-weight="bold">r = h · tan γ</text>
+
+  <!-- БПЛА внутри и снаружи -->
+  <g>
+    <polygon points="452,352 466,360 452,368 456,360" fill="#1a5fb4"/>
+    <text x="430" y="340" font-size="13.5" fill="#1a5fb4" font-weight="bold">БПЛА внутри — связь есть</text>
+  </g>
+  <g>
+    <polygon points="640,392 654,400 640,408 644,400" fill="#95a5a6"/>
+    <text x="596" y="380" font-size="13.5" fill="#7f8c8d">БПЛА снаружи — связи нет</text>
+  </g>
+
+  <text x="40" y="34" font-size="16" fill="#2c3e50" font-weight="bold">Зона покрытия КА — конус с вершиной у спутника и осью, направленной на надир</text>
+</svg>

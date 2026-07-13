@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 740 430" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#c0392b"/>
+    </marker>
+    <marker id="arrB" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#1a5fb4"/>
+    </marker>
+    <radialGradient id="earth1" cx="35%" cy="35%">
+      <stop offset="0%" stop-color="#7ec8ff"/>
+      <stop offset="100%" stop-color="#1c6dc0"/>
+    </radialGradient>
+  </defs>
+  <rect width="740" height="430" fill="#fafcff"/>
+  <!-- Орбита -->
+  <circle cx="230" cy="215" r="170" fill="none" stroke="#8899aa" stroke-width="1.6" stroke-dasharray="7 6"/>
+  <!-- Земля -->
+  <circle cx="230" cy="215" r="110" fill="url(#earth1)" stroke="#155a9c" stroke-width="2"/>
+  <text x="230" y="222" text-anchor="middle" font-size="20" fill="#ffffff" font-weight="bold">Земля</text>
+  <!-- Спутник -->
+  <circle cx="350" cy="95" r="8" fill="#2c3e50"/>
+  <text x="368" y="86" font-size="16" fill="#2c3e50" font-weight="bold">КА</text>
+  <!-- Вектор скорости (касательная) -->
+  <line x1="350" y1="95" x2="435" y2="180" stroke="#1a5fb4" stroke-width="3.2" marker-end="url(#arrB)"/>
+  <text x="448" y="176" font-size="16" fill="#1a5fb4" font-weight="bold">v — скорость</text>
+  <text x="448" y="196" font-size="14" fill="#1a5fb4">(по касательной к орбите)</text>
+  <!-- Вектор притяжения (к центру) -->
+  <line x1="350" y1="95" x2="292" y2="153" stroke="#c0392b" stroke-width="3.2" marker-end="url(#arr)"/>
+  <text x="236" y="120" font-size="16" fill="#c0392b" font-weight="bold">g — притяжение</text>
+  <text x="243" y="140" font-size="14" fill="#c0392b">(к центру Земли)</text>
+  <!-- стрелка движения по орбите -->
+  <path d="M 385 330 A 170 170 0 0 1 120 350" fill="none" stroke="#8899aa" stroke-width="1.6"/>
+  <path d="M 124 342 L 112 353 L 128 358 Z" fill="#8899aa"/>
+  <!-- Пояснение справа -->
+  <text x="470" y="250" font-size="16" fill="#2c3e50" font-weight="bold">Спутник всё время «падает» на Землю,</text>
+  <text x="470" y="272" font-size="16" fill="#2c3e50">но боковая скорость уносит его вперёд</text>
+  <text x="470" y="294" font-size="16" fill="#2c3e50">ровно настолько, что поверхность</text>
+  <text x="470" y="316" font-size="16" fill="#2c3e50">«убегает» из-под него. Падение никогда</text>
+  <text x="470" y="338" font-size="16" fill="#2c3e50">не заканчивается — это и есть орбита.</text>
+  <text x="470" y="378" font-size="15" fill="#555">Круговая скорость:  v = √(μ / r)</text>
+  <text x="470" y="400" font-size="15" fill="#555">на высоте 500 км:  v ≈ 7.6 км/с</text>
+</svg>

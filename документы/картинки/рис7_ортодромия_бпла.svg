@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 440" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <marker id="arr7" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#1a7a3c"/>
+    </marker>
+    <radialGradient id="earth7" cx="38%" cy="35%">
+      <stop offset="0%" stop-color="#9fd4ff"/>
+      <stop offset="100%" stop-color="#2f7fc4"/>
+    </radialGradient>
+  </defs>
+  <rect width="760" height="440" fill="#fafcff"/>
+
+  <!-- Земной шар -->
+  <circle cx="290" cy="225" r="180" fill="url(#earth7)" fill-opacity="0.45" stroke="#155a9c" stroke-width="2.2"/>
+  <!-- пара «параллелей» для объема -->
+  <ellipse cx="290" cy="160" rx="164" ry="34" fill="none" stroke="#155a9c" stroke-width="0.8" stroke-opacity="0.35"/>
+  <ellipse cx="290" cy="285" rx="164" ry="34" fill="none" stroke="#155a9c" stroke-width="0.8" stroke-opacity="0.35"/>
+
+  <!-- Точки старта и финиша -->
+  <circle cx="175" cy="180" r="7" fill="#c0392b"/>
+  <text x="96" y="168" font-size="15" fill="#c0392b" font-weight="bold">А (старт)</text>
+  <circle cx="404" cy="200" r="7" fill="#1a5fb4"/>
+  <text x="420" y="196" font-size="15" fill="#1a5fb4" font-weight="bold">Б (финиш)</text>
+
+  <!-- Ортодромия — дуга большого круга -->
+  <path d="M 175 180 Q 292 108 404 200" fill="none" stroke="#1a7a3c" stroke-width="3.4"/>
+  <path d="M 289 143 L 305 139 L 297 153 Z" fill="#1a7a3c"/>
+  <text x="252" y="120" font-size="15" fill="#1a7a3c" font-weight="bold">ортодромия —</text>
+  <text x="252" y="138" font-size="14" fill="#1a7a3c">кратчайший путь по сфере</text>
+
+  <!-- «Прямая» на карте (локсодромия/хорда) для контраста -->
+  <line x1="175" y1="180" x2="404" y2="200" stroke="#95a5a6" stroke-width="1.8" stroke-dasharray="6 5"/>
+  <text x="242" y="212" font-size="12.5" fill="#7f8c8d">«прямая» на плоской карте — длиннее!</text>
+
+  <!-- Направление на север у точки А и азимут -->
+  <line x1="175" y1="180" x2="185" y2="108" stroke="#555" stroke-width="1.6" stroke-dasharray="4 4"/>
+  <text x="164" y="96" font-size="13.5" fill="#555">на север</text>
+  <path d="M 181.9 130.7 A 50 50 0 0 1 219 148" fill="none" stroke="#e67e22" stroke-width="2.4"/>
+  <text x="216" y="128" font-size="17" fill="#e67e22" font-weight="bold">A₀</text>
+  <text x="238" y="112" font-size="13" fill="#e67e22">начальный азимут —</text>
+  <text x="238" y="128" font-size="13" fill="#e67e22">угол курса от севера</text>
+
+  <!-- Текущая позиция БПЛА на дуге -->
+  <circle cx="255" cy="146" r="6" fill="#2c3e50"/>
+  <text x="212" y="170" font-size="13.5" fill="#2c3e50" font-weight="bold">БПЛА в момент t</text>
+
+  <!-- Формулы -->
+  <rect x="500" y="248" width="248" height="176" rx="10" fill="#f2f9f2" stroke="#bcd8bc" stroke-width="1.4"/>
+  <text x="516" y="276" font-size="15" fill="#2c3e50" font-weight="bold">Движение по дуге:</text>
+  <text x="516" y="304" font-size="14.5" fill="#2c3e50">пройдено:  s(t) = V·(t − t₀)</text>
+  <text x="516" y="330" font-size="14.5" fill="#2c3e50">угловая дуга:  σ = s / R</text>
+  <text x="516" y="356" font-size="14.5" fill="#2c3e50">новая широта/долгота —</text>
+  <text x="516" y="378" font-size="14.5" fill="#2c3e50">прямая геодезическая</text>
+  <text x="516" y="400" font-size="14.5" fill="#2c3e50">задача (раздел 12)</text>
+</svg>

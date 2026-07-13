@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 470" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <marker id="arrG" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#1a7a3c"/>
+    </marker>
+    <marker id="arrK" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#2c3e50"/>
+    </marker>
+    <radialGradient id="earth4" cx="40%" cy="40%">
+      <stop offset="0%" stop-color="#7ec8ff"/>
+      <stop offset="100%" stop-color="#1c6dc0"/>
+    </radialGradient>
+  </defs>
+  <rect width="780" height="470" fill="#fafcff"/>
+  <text x="390" y="34" text-anchor="middle" font-size="17" fill="#2c3e50" font-weight="bold">Вид на Землю со стороны Северного полюса</text>
+
+  <!-- Земля -->
+  <circle cx="310" cy="250" r="135" fill="url(#earth4)" stroke="#155a9c" stroke-width="2"/>
+  <circle cx="310" cy="250" r="4" fill="#ffffff"/>
+
+  <!-- Инерциальные оси АГЭСК (не вращаются) -->
+  <line x1="310" y1="250" x2="600" y2="250" stroke="#2c3e50" stroke-width="2.2" marker-end="url(#arrK)"/>
+  <text x="608" y="256" font-size="16" fill="#2c3e50" font-weight="bold">X (АГЭСК) → ♈</text>
+  <line x1="310" y1="250" x2="310" y2="55" stroke="#2c3e50" stroke-width="2.2" marker-end="url(#arrK)"/>
+  <text x="322" y="66" font-size="16" fill="#2c3e50" font-weight="bold">Y (АГЭСК)</text>
+  <text x="452" y="282" font-size="13.5" fill="#2c3e50">оси НЕ вращаются — «прибиты к звёздам»</text>
+
+  <!-- Ось ГСК: повернута на звездное время S (35°) -->
+  <line x1="310" y1="250" x2="548" y2="83.5" stroke="#1a7a3c" stroke-width="2.2" marker-end="url(#arrG)"/>
+  <text x="556" y="76" font-size="16" fill="#1a7a3c" font-weight="bold">X (ГСК)</text>
+  <!-- Гринвич на поверхности -->
+  <circle cx="420.6" cy="172.6" r="6" fill="#1a7a3c"/>
+  <text x="432" y="166" font-size="14.5" fill="#1a7a3c" font-weight="bold">Гринвичский меридиан</text>
+  <text x="432" y="184" font-size="13" fill="#1a7a3c">ось ГСК всегда проходит через него</text>
+
+  <!-- Угол звездного времени -->
+  <path d="M 400 250 A 90 90 0 0 0 383.7 198.4" fill="none" stroke="#e67e22" stroke-width="2.6"/>
+  <text x="412" y="218" font-size="17" fill="#e67e22" font-weight="bold">S(t)</text>
+  <text x="404" y="308" font-size="14" fill="#e67e22" font-weight="bold">звёздное время — угол поворота</text>
+  <text x="404" y="326" font-size="14" fill="#e67e22" font-weight="bold">Земли, растёт со временем</text>
+
+  <!-- Стрелка вращения Земли -->
+  <path d="M 205 152 A 145 145 0 0 1 315 112" fill="none" stroke="#88a" stroke-width="1.8"/>
+  <path d="M 306 105 L 322 111 L 309 122 Z" fill="#88a"/>
+  <text x="120" y="132" font-size="13.5" fill="#88a">Земля вращается</text>
+  <text x="120" y="149" font-size="13.5" fill="#88a">(виток за 23 ч 56 м)</text>
+
+  <!-- Формулы перехода -->
+  <text x="40" y="398" font-size="15.5" fill="#2c3e50" font-weight="bold">Переход АГЭСК → ГСК — поворот вокруг оси Z на угол S(t):</text>
+  <text x="60" y="424" font-size="15" fill="#2c3e50">x_г =  x_а·cos S + y_а·sin S        y_г = −x_а·sin S + y_а·cos S        z_г = z_а</text>
+  <text x="40" y="452" font-size="14" fill="#666">В программе: convAgescToGsc(coord, t) и convGscToAgesc(coord, t) — время обязательно, ведь S зависит от t!</text>
+</svg>
