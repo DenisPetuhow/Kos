@@ -126,16 +126,14 @@ void CPaint3D::calc()
             ASDBsePar bse;
             bse.type=COMMUNICATION;
 
-            // Получаем высоту орбиты из TLE или Кеплеровых элементов
-            double altitude_km = 500.0; // По умолчанию
-            if(m_ka[i].type_dat == 1) {
-                // TLE данные - извлекаем высоту из большой полуоси
-                QVector<double> kep = ka.getKep(m_time_begin);
-                altitude_km = kep[0] - R_EARTH; // a - R_EARTH
-            } else {
-                // Кеплеровы элементы
-                altitude_km = m_ka[i].kep.a - R_EARTH;
-            }
+            // Высота орбиты - из фактического положения КА на начало
+            // моделирования: |r| - R_EARTH. getCurrPos возвращает АГЭСК в км
+            // и одинаково работает для TLE (SGP4) и Кеплеровых элементов.
+            QVector<double> pos0 = ka.getCurrPos(m_time_begin);
+            double r0 = sqrt(pos0[0]*pos0[0] + pos0[1]*pos0[1] + pos0[2]*pos0[2]);
+            double altitude_km = r0 - R_EARTH;
+            if(altitude_km < 100.0)
+                altitude_km = 500.0; // защита от некорректных исходных данных
 
             // Получаем имя спутника для поиска в конфигурации
             QString satName = m_ka[i].stle.satName;

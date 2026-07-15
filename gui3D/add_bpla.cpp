@@ -521,9 +521,9 @@ void add_BPLA::updateVisibilityLines(QDateTime time, ASDScene3D* scene)
 
         if(ka_id == 0) continue; // Пропускаем КА без ID
 
-        // Получаем координаты КА в AGESC
+        // Получаем координаты КА в АГЭСК (getCurrPos по умолчанию возвращает AGESC, км)
         ASDOrbitalVehicle ka_vehicle(ka_par);
-        QVector<double> ka_agesc_km = ka_vehicle.getCoordAGESC(time);
+        QVector<double> ka_agesc_km = ka_vehicle.getCurrPos(time);
 
         // Получаем gamma для КА - ТОТ ЖЕ, что использован для зеленого конуса
         double ka_gamma = 30.0; // Резерв на случай пустого bsa

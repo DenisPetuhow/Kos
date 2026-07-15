@@ -1,5 +1,5 @@
 #include "satellitegammaconfig.h"
-#include "asdconst.h"
+#include "asdtype.h"   // R_EARTH, DEG_TO_RAD, RAD_TO_DEG
 #include <cmath>
 
 SatelliteGammaConfig::SatelliteGammaConfig()
